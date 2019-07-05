@@ -1,13 +1,26 @@
 Basic usage:
 
+```php
+#!/usr/bin/env php
+<?php
+
+error_reporting(E_ALL & ~E_NOTICE);
+
+use StasPiv\DgtDrvPhp\BufferAnalyzer\ChessAnalyzer;
+use StasPiv\DgtDrvPhp\BufferAnalyzer\SomeNewHandler;
+use StasPiv\DgtDrvPhp\Stream;
+use StasPiv\DgtDrvPhp\StreamReader\DgtBoardStreamReader;
+
+require_once 'vendor/autoload.php';
+
 $stream = new Stream();
 $streamReader = new DgtBoardStreamReader();
 
 $chessAnalyzer = new ChessAnalyzer(
-        $stream,
-        $fenParser,
-        in_array('--rotated', $argv) ? 0 : 1,
-        in_array('--black', $argv) ? 'b' : 'w'
+    $stream,
+    new FenParser0x88(),
+    in_array('--rotated', $argv) ? 0 : 1,
+    in_array('--black', $argv) ? 'b' : 'w'
 );
 
 $streamReader->addAnalyzer($chessAnalyzer);
