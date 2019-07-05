@@ -1,0 +1,37 @@
+{
+  "name": "staspiv/dgt-drv-php",
+  "description": "This is dgt driver on php",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Stanislav Pivovartsev",
+      "email": "stanislav_pivovartsev@mail.ru"
+    }
+  ],
+  "repositories": [
+    {
+      "type": "vcs",
+      "url": "https://github.com/StasPiv/Chess-Game.git"
+    },
+    {
+      "type": "vcs",
+      "url": "https://github.com/DHTMLGoodies/chessParser.git"
+    }
+  ],
+  "minimum-stability": "stable",
+  "require": {
+    "php": ">7.2",
+    "chesscom/chess-game": "~1.1",
+    "DHTMLGoodies/chessParser": "dev-master",
+    "symfony/process": "^4.3"
+  },
+  "require-dev": {
+
+  },
+  "autoload": {
+    "psr-4": {
+      "StasPiv\\DgtDrvPhp\\": "src/"
+    }
+  }
+}
