@@ -366,7 +366,7 @@ class ChessAnalyzer implements BufferAnalyzer
     {
         $fenBefore = $this->fenParser->getFen();
         try {
-            $this->fenParser->move($validMove);
+            @$this->fenParser->move($validMove);
         } catch (FenParser0x88Exception $exception) {
             echo $exception->getMessage() . PHP_EOL;
         }
