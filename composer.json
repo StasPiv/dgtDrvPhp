@@ -31,7 +31,8 @@
   },
   "autoload": {
     "psr-4": {
-      "StasPiv\\DgtDrvPhp\\": "src/"
+      "StasPiv\\DgtDrvPhp\\": "src/",
+      "StasPiv\\DgtDrvPhp\\Tests\\": "tests/"
     }
   }
 }

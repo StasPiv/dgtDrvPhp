@@ -15,10 +15,7 @@ $stream = new Stream();
 $streamReader = new DgtBoardStreamReader();
 
 $chessAnalyzer = new ChessAnalyzer(
-    $stream,
-    new FenParser0x88(),
-    in_array('--rotated', $argv) ? 0 : 1,
-    in_array('--black', $argv) ? 'b' : 'w'
+    $stream, new FenParser0x88(), in_array('--rotated', $argv) ? 0 : 1
 );
 
 $streamReader->addAnalyzer($chessAnalyzer);

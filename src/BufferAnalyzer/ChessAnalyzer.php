@@ -2,8 +2,10 @@
 
 namespace StasPiv\DgtDrvPhp\BufferAnalyzer;
 
+use Exception;
 use FenParser0x88;
 use FenParser0x88Exception;
+use RuntimeException;
 use StasPiv\DgtDrvPhp\BufferAnalyzer;
 use StasPiv\DgtDrvPhp\Stream;
 use StasPiv\DgtDrvPhp\StreamReader\DgtBoardStreamReader;
@@ -28,6 +30,9 @@ class ChessAnalyzer implements BufferAnalyzer
     const PIECE_BKING       = 0x0b;
     const PIECE_BQUEEN      = 0x0c;
 
+    const MAKE_MOVE = 'make-move';
+    const RESET_VALID_MOVES = 'reset-valid-moves';
+
     /** @var Stream */
     private $stream;
 
@@ -37,117 +42,26 @@ class ChessAnalyzer implements BufferAnalyzer
      * @var FenParser0x88
      */
     private $fenParser;
-    private $moveInProgress = false;
 
     private $validMoveFens = [];
 
-    private $debug = false;
-
-    /**
-     * @var string
-     */
-    private $moveToColor = 'w';
-
-    /**
-     * @var string
-     */
-    private $castleString = 'KQkq';
-
-    /**
-     * @var string
-     */
-    private $enPassantSquare = '-';
-
-    /**
-     * @var string
-     */
-    private $moveInformation = '0 0';
-
-    private $boardFen = '';
-
-    private $lastMove = [];
-
-    private $lastMoveNotation = '';
-
     /** @var HandlerInterface[]|array */
     private $handlers;
-    
+
     /**
      * ChessAnalyzer constructor.
      * @param Stream $stream
      * @param FenParser0x88 $fenParser
      * @param bool $boardRotated
-     * @param string $moveToColor
-     * @param string $castleString
-     * @param string $enPassantSquare
-     * @param string $moveInformation
      */
-    public function __construct(Stream $stream, FenParser0x88 $fenParser, bool $boardRotated = true, string $moveToColor = 'w', string $castleString = 'KQkq', string $enPassantSquare = '-', string $moveInformation = '0 0')
+    public function __construct(Stream $stream, FenParser0x88 $fenParser, bool $boardRotated = true)
     {
         $this->stream = $stream;
         $this->boardRotated = $boardRotated;
         $this->fenParser = $fenParser;
-        $this->moveToColor = $moveToColor;
-        $this->castleString = $castleString;
-        $this->enPassantSquare = $enPassantSquare;
-        $this->moveInformation = $moveInformation;
 
         $stream->write(DgtBoardStreamReader::SEND_UPDATE_BRD);
         $stream->write(DgtBoardStreamReader::SEND_BRD);
-    }
-
-    /**
-     * @return bool
-     */
-    public function isDebug(): bool
-    {
-        return $this->debug;
-    }
-
-    /**
-     * @param bool $debug
-     * @return ChessAnalyzer
-     */
-    public function setDebug(bool $debug): ChessAnalyzer
-    {
-        $this->debug = $debug;
-        return $this;
-    }
-
-    /**
-     * @return array
-     */
-    public function getLastMove(): array
-    {
-        return $this->lastMove;
-    }
-
-    /**
-     * @param array $lastMove
-     * @return ChessAnalyzer
-     */
-    public function setLastMove(array $lastMove): ChessAnalyzer
-    {
-        $this->lastMove = $lastMove;
-        return $this;
-    }
-
-    /**
-     * @return string
-     */
-    public function getLastMoveNotation(): string
-    {
-        return $this->lastMoveNotation;
-    }
-
-    /**
-     * @param string $lastMoveNotation
-     * @return ChessAnalyzer
-     */
-    public function setLastMoveNotation(string $lastMoveNotation): ChessAnalyzer
-    {
-        $this->lastMoveNotation = $lastMoveNotation;
-        return $this;
     }
 
     /**
@@ -183,60 +97,68 @@ class ChessAnalyzer implements BufferAnalyzer
     }
 
     /**
-     * @param string $moveToColor
-     * @return ChessAnalyzer
-     */
-    public function setMoveToColor(string $moveToColor): ChessAnalyzer
-    {
-        $this->moveToColor = $moveToColor;
-        return $this;
-    }
-
-    /**
      * @param array $buffer
-     * @throws \Exception
+     * @throws Exception
      */
     public function analyzeBoard(array $buffer): void
     {
-        if ($this->boardRotated) {
-            $buffer = array_reverse($buffer);
+        $fen = $this->bufferToFen($buffer);
+
+        $actions = $this->getResultForAnalyzeBoard(
+            $this->handleBoardUpdated($fen, $updatedFen),
+            isset($this->validMoveFens[$fen])
+        );
+
+        foreach ($actions as $actionName) {
+            $this->doActionForAnalyzeBoard($actionName, $buffer, $updatedFen);
+        }
+    }
+
+    /**
+     * @param bool $boardUpdated
+     * @param bool $moveFound
+     * @return array
+     */
+    public function getResultForAnalyzeBoard(bool $boardUpdated, bool $moveFound) : array
+    {
+        $actions = [];
+
+        if ($moveFound) {
+            $actions[] = self::MAKE_MOVE;
         }
 
-        $fen = explode(' ', $this->bufferToFen($buffer))[0];
-
-        if ($this->handleBoardUpdated($fen)) {
-            $this->moveInProgress = false;
+        if ($boardUpdated) {
+            $actions[] = self::RESET_VALID_MOVES;
         }
-        
-        if ($this->moveInProgress) {
-            if (isset($this->validMoveFens[$fen])) {
-                $move = $this->validMoveFens[$fen];
-                $fenBefore = $this->fenParser->getFen();
+
+        return $actions;
+    }
+
+    /**
+     * @param string $actionName
+     * @param array $buffer
+     * @param string|null $updatedFen
+     */
+    private function doActionForAnalyzeBoard(string $actionName, array $buffer, string $updatedFen = null): void
+    {
+        switch ($actionName) {
+            case self::MAKE_MOVE:
                 try {
+                    $move = $this->validMoveFens[$this->bufferToFen($buffer)];
                     $this->fenParser->move($move);
-                } catch (FenParser0x88Exception $exception) {
+                    echo 'move completed: ' . $this->fenParser->getNotation() . PHP_EOL;
+                    $this->setLastMove($move)->setLastMoveNotation($this->fenParser->getNotation());
+                    $this->handleLegalMoveCompleted($move, $this->fenParser->getFen());
+                } catch (\Throwable $exception) {
                     echo 'parser fen ' . $this->fenParser->getFen() . PHP_EOL;
                     // not valid chess move
                     echo $exception->getMessage() . PHP_EOL;
-                    return;
                 }
-                echo 'move completed: ' . $this->fenParser->getNotation() . PHP_EOL;
-                $this->setLastMove($move)->setLastMoveNotation($this->fenParser->getNotation());
-                
-                $this->handleLegalMoveCompleted($move, $fenBefore);
-                
-                $this->moveInProgress = false;
-            }
-
-            return;
+                break;
+            case self::RESET_VALID_MOVES:
+                $this->resetValidMoves($updatedFen);
+                break;
         }
-
-        if (empty($this->fenParser->getNotation())) {
-            $this->fenParser->setFen($fen . $this->getFenSuffix());
-        }
-
-        $this->moveInProgress = true;
-        $this->resetValidMoves();
     }
 
     /**
@@ -248,18 +170,12 @@ class ChessAnalyzer implements BufferAnalyzer
         $square = $this->getSquare($buffer[0]);
 
         if (!empty($pieceNotation)) {
-            if ($this->isDebug()) {
-                echo $pieceNotation . ' added on ' . $square . PHP_EOL;
-            }
             foreach ($this->handlers as $handler) {
                 $handler->handlePieceAdded($square, $pieceNotation);
             }
         } else {
             foreach ($this->handlers as $handler) {
                 $handler->handlePieceRemoved($square);
-            }
-            if ($this->isDebug()) {
-                echo 'piece removed from ' . $square . PHP_EOL;
             }
         }
 
@@ -300,7 +216,7 @@ class ChessAnalyzer implements BufferAnalyzer
             case self::PIECE_BQUEEN:
                 return 'q';
             default:
-                throw new \RuntimeException('Unknown chess piece: ' . $piece);
+                throw new RuntimeException('Unknown chess piece: ' . $piece);
         }
     }
 
@@ -323,6 +239,10 @@ class ChessAnalyzer implements BufferAnalyzer
      */
     private function bufferToFen(array $buffer) : string
     {
+        if ($this->boardRotated) {
+            $buffer = array_reverse($buffer);
+        }
+
         $squareCounter = $emptyCounter = 0;
 
         $lines = [];
@@ -345,22 +265,12 @@ class ChessAnalyzer implements BufferAnalyzer
             }
         }
 
-        $this->boardFen = implode('/', $lines);
-
-        return $this->boardFen . $this->getFenSuffix();
-    }
-
-    /**
-     * @return string
-     */
-    private function getFenSuffix(): string
-    {
-        return ' ' . $this->moveToColor . ' ' . $this->castleString . ' ' . $this->enPassantSquare . ' ' . $this->moveInformation;
+        return implode('/', $lines);
     }
 
     /**
      * @param array $validMove
-     * @throws \Exception
+     * @throws Exception
      */
     private function addValidMove(array $validMove): void
     {
@@ -374,7 +284,7 @@ class ChessAnalyzer implements BufferAnalyzer
         $this->fenParser->setFen($fenBefore);
     }
 
-    private function resetValidMoves(string $fen = ''): void
+    private function resetValidMoves(string $fen): void
     {
         if (!empty($fen)) {
             $this->fenParser->setFen($fen);
@@ -404,15 +314,16 @@ class ChessAnalyzer implements BufferAnalyzer
 
     /**
      * @param string $fen
+     * @param $updatedFen
      * @return bool
      */
-    private function handleBoardUpdated(string $fen): bool
+    private function handleBoardUpdated(string $fen, &$updatedFen): bool
     {
         $ret = true;
         
         foreach ($this->handlers as $handler) {
             if ($ret &= $handler->handleBoardUpdated($fen, $updatedFen)) {
-                $this->resetValidMoves($updatedFen ?: $fen . $this->getFenSuffix());
+                $this->resetValidMoves($updatedFen);
             }
         }
         
@@ -427,7 +338,6 @@ class ChessAnalyzer implements BufferAnalyzer
     {
         foreach ($this->handlers as $handler) {
             if (!$handler->handleLegalMoveCompleted($move, $this->fenParser->getNotation(), $fenBefore, $this->fenParser->getFen())) {
-                $this->moveInProgress = false;
                 $this->resetValidMoves($fenBefore);
             }
 
