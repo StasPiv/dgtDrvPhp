@@ -31,6 +31,7 @@ class ChessAnalyzer implements BufferAnalyzer
     const PIECE_BQUEEN      = 0x0c;
 
     const MAKE_MOVE = 'make-move';
+    const HANDLE_MOVE_COMPLETED = 'handle-move-completed';
     const RESET_VALID_MOVES = 'reset-valid-moves';
 
     /** @var Stream */
@@ -105,8 +106,8 @@ class ChessAnalyzer implements BufferAnalyzer
         $fen = $this->bufferToFen($buffer);
 
         $actions = $this->getResultForAnalyzeBoard(
-            $this->handleBoardUpdated($fen, $updatedFen),
-            isset($this->validMoveFens[$fen])
+            isset($this->validMoveFens[$fen]),
+            $this->handleBoardUpdated($fen, $updatedFen)
         );
 
         foreach ($actions as $actionName) {
@@ -115,16 +116,17 @@ class ChessAnalyzer implements BufferAnalyzer
     }
 
     /**
-     * @param bool $boardUpdated
      * @param bool $moveFound
+     * @param bool $boardUpdated
      * @return array
      */
-    public function getResultForAnalyzeBoard(bool $boardUpdated, bool $moveFound) : array
+    public function getResultForAnalyzeBoard(bool $moveFound, bool $boardUpdated) : array
     {
         $actions = [];
 
         if ($moveFound) {
             $actions[] = self::MAKE_MOVE;
+            $actions[] = self::HANDLE_MOVE_COMPLETED;
         }
 
         if ($boardUpdated) {
@@ -322,9 +324,7 @@ class ChessAnalyzer implements BufferAnalyzer
         $ret = true;
         
         foreach ($this->handlers as $handler) {
-            if ($ret &= $handler->handleBoardUpdated($fen, $updatedFen)) {
-                $this->resetValidMoves($updatedFen);
-            }
+            $ret &= $handler->handleBoardUpdated($fen, $updatedFen);
         }
         
         return $ret;
@@ -337,10 +337,8 @@ class ChessAnalyzer implements BufferAnalyzer
     private function handleLegalMoveCompleted($move, string $fenBefore): void
     {
         foreach ($this->handlers as $handler) {
-            if (!$handler->handleLegalMoveCompleted($move, $this->fenParser->getNotation(), $fenBefore, $this->fenParser->getFen())) {
-                $this->resetValidMoves($fenBefore);
-            }
-
+            $handler->handleLegalMoveCompleted($move, $this->fenParser->getNotation(), $fenBefore,
+                $this->fenParser->getFen());
         }
     }
 

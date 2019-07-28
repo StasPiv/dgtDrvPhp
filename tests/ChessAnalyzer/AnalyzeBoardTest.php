@@ -20,24 +20,24 @@ class AnalyzeBoardTest extends \PHPUnit_Framework_TestCase
         $actions = $this->chessAnalyzer->getResultForAnalyzeBoard(true, true);
 
         $this->assertEquals(
-            [ChessAnalyzer::MAKE_MOVE, ChessAnalyzer::RESET_VALID_MOVES],
+            [ChessAnalyzer::MAKE_MOVE, ChessAnalyzer::HANDLE_MOVE_COMPLETED, ChessAnalyzer::RESET_VALID_MOVES],
             $actions
         );
     }
 
     public function testMakeMoveWhenMoveFoundAndBoardNotUpdated()
     {
-        $actions = $this->chessAnalyzer->getResultForAnalyzeBoard(false, true);
+        $actions = $this->chessAnalyzer->getResultForAnalyzeBoard(true, false);
 
         $this->assertEquals(
-            [ChessAnalyzer::MAKE_MOVE],
+            [ChessAnalyzer::MAKE_MOVE, ChessAnalyzer::HANDLE_MOVE_COMPLETED],
             $actions
         );
     }
 
     public function testResetValidMovesWhenMoveNotFoundAndBoardUpdated()
     {
-        $actions = $this->chessAnalyzer->getResultForAnalyzeBoard(true, false);
+        $actions = $this->chessAnalyzer->getResultForAnalyzeBoard(false, true);
 
         $this->assertEquals(
             [ChessAnalyzer::RESET_VALID_MOVES],
