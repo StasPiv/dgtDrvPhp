@@ -149,7 +149,6 @@ class ChessAnalyzer implements BufferAnalyzer
                     $move = $this->validMoveFens[$this->bufferToFen($buffer)];
                     $this->fenParser->move($move);
                     echo 'move completed: ' . $this->fenParser->getNotation() . PHP_EOL;
-                    $this->setLastMove($move)->setLastMoveNotation($this->fenParser->getNotation());
                     $this->handleLegalMoveCompleted($move, $this->fenParser->getFen());
                 } catch (\Throwable $exception) {
                     echo 'parser fen ' . $this->fenParser->getFen() . PHP_EOL;
