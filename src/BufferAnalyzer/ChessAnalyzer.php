@@ -49,6 +49,9 @@ class ChessAnalyzer implements BufferAnalyzer
     /** @var HandlerInterface[]|array */
     private $handlers;
 
+    /** @var string */
+    private $lastFen;
+
     /**
      * ChessAnalyzer constructor.
      * @param Stream $stream
@@ -105,6 +108,12 @@ class ChessAnalyzer implements BufferAnalyzer
     {
         $fen = $this->bufferToFen($buffer);
 
+        if ($fen === $this->lastFen) {
+            return;
+        }
+
+        $this->lastFen = $fen;
+
         $actions = $this->getResultForAnalyzeBoard(
             isset($this->validMoveFens[$fen]),
             $this->handleBoardUpdated($fen, $updatedFen)
@@ -145,16 +154,11 @@ class ChessAnalyzer implements BufferAnalyzer
     {
         switch ($actionName) {
             case self::MAKE_MOVE:
-                try {
-                    $move = $this->validMoveFens[$this->bufferToFen($buffer)];
-                    $this->fenParser->move($move);
-                    echo 'move completed: ' . $this->fenParser->getNotation() . PHP_EOL;
-                    $this->handleLegalMoveCompleted($move, $this->fenParser->getFen());
-                } catch (\Throwable $exception) {
-                    echo 'parser fen ' . $this->fenParser->getFen() . PHP_EOL;
-                    // not valid chess move
-                    echo $exception->getMessage() . PHP_EOL;
-                }
+                $move = $this->validMoveFens[$this->bufferToFen($buffer)];
+                $fenBefore = $this->fenParser->getFen();
+                $this->fenParser->move($move);
+                echo 'move completed: ' . $this->fenParser->getNotation() . PHP_EOL;
+                $this->handleLegalMoveCompleted($move, $fenBefore);
                 break;
             case self::RESET_VALID_MOVES:
                 $this->resetValidMoves($updatedFen);
@@ -287,9 +291,8 @@ class ChessAnalyzer implements BufferAnalyzer
 
     private function resetValidMoves(string $fen): void
     {
-        if (!empty($fen)) {
-            $this->fenParser->setFen($fen);
-        }
+        $this->fenParser->setFen($fen);
+        $this->validMoveFens = [];
 
         foreach ($this->fenParser->getValidMovesBoardCoordinates() as $from => $validCoordinate) {
             foreach ($validCoordinate as $to) {
@@ -321,11 +324,11 @@ class ChessAnalyzer implements BufferAnalyzer
     private function handleBoardUpdated(string $fen, &$updatedFen): bool
     {
         $ret = true;
-        
+
         foreach ($this->handlers as $handler) {
             $ret &= $handler->handleBoardUpdated($fen, $updatedFen);
         }
-        
+
         return $ret;
     }
 
@@ -336,8 +339,10 @@ class ChessAnalyzer implements BufferAnalyzer
     private function handleLegalMoveCompleted($move, string $fenBefore): void
     {
         foreach ($this->handlers as $handler) {
-            $handler->handleLegalMoveCompleted($move, $this->fenParser->getNotation(), $fenBefore,
-                $this->fenParser->getFen());
+            if (!$handler->handleLegalMoveCompleted($move, $this->fenParser->getNotation(), $fenBefore,
+                $this->fenParser->getFen())) {
+                $this->resetValidMoves($fenBefore);
+            }
         }
     }
 
