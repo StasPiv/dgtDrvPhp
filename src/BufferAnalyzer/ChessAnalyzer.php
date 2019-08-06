@@ -56,16 +56,23 @@ class ChessAnalyzer implements BufferAnalyzer
      * ChessAnalyzer constructor.
      * @param Stream $stream
      * @param FenParser0x88 $fenParser
-     * @param bool $boardRotated
      */
-    public function __construct(Stream $stream, FenParser0x88 $fenParser, bool $boardRotated = true)
+    public function __construct(Stream $stream, FenParser0x88 $fenParser)
     {
         $this->stream = $stream;
-        $this->boardRotated = $boardRotated;
         $this->fenParser = $fenParser;
 
-        $stream->write(DgtBoardStreamReader::SEND_UPDATE_BRD);
         $stream->write(DgtBoardStreamReader::SEND_BRD);
+    }
+
+    /**
+     * @param bool $boardRotated
+     * @return ChessAnalyzer
+     */
+    public function setBoardRotated(bool $boardRotated): ChessAnalyzer
+    {
+        $this->boardRotated = $boardRotated;
+        return $this;
     }
 
     /**

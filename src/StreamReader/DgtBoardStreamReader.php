@@ -84,6 +84,8 @@ class DgtBoardStreamReader implements StreamReader
                         break;
                     case self::MESSAGE_BOARD:
                         $analyzer->analyzeBoard($this->buffer);
+                        usleep(.2 * 1000000);
+                        $stream->write(self::SEND_BRD);
                         break;
                 }
             }
