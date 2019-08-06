@@ -61,8 +61,6 @@ class ChessAnalyzer implements BufferAnalyzer
     {
         $this->stream = $stream;
         $this->fenParser = $fenParser;
-
-        $stream->write(DgtBoardStreamReader::SEND_BRD);
     }
 
     /**
