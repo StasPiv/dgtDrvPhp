@@ -39,6 +39,7 @@ class DgtBoardStreamReader implements StreamReader
     private $partSize        = self::PART_SIZE_MOVE;
     private $messageType     = self::MESSAGE_UPDATE;
     private $buffer          = [];
+    private $bufferBoard     = [];
     private $bufferCounter   = 0;
 
     /** @var BufferAnalyzer[]|array */
@@ -83,9 +84,8 @@ class DgtBoardStreamReader implements StreamReader
                         $analyzer->analyzeMove($this->buffer);
                         break;
                     case self::MESSAGE_BOARD:
+                        $this->bufferBoard = $this->buffer;
                         $analyzer->analyzeBoard($this->buffer);
-                        usleep(.2 * 1000000);
-                        $stream->write(self::SEND_BRD);
                         break;
                 }
             }

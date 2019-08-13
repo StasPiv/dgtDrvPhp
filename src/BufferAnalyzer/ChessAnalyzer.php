@@ -9,6 +9,8 @@ use RuntimeException;
 use StasPiv\DgtDrvPhp\BufferAnalyzer;
 use StasPiv\DgtDrvPhp\Stream;
 use StasPiv\DgtDrvPhp\StreamReader\DgtBoardStreamReader;
+use Symfony\Component\Console\Output\Output;
+use Symfony\Component\Console\Output\OutputInterface;
 
 /**
  * Class ChessAnalyzer
@@ -51,16 +53,25 @@ class ChessAnalyzer implements BufferAnalyzer
 
     /** @var string */
     private $lastFen;
+    
+    /** @var OutputInterface */
+    private $output;
 
     /**
      * ChessAnalyzer constructor.
      * @param Stream $stream
      * @param FenParser0x88 $fenParser
      */
-    public function __construct(Stream $stream, FenParser0x88 $fenParser)
+    public function __construct(Stream $stream, FenParser0x88 $fenParser, OutputInterface $output)
     {
         $this->stream = $stream;
         $this->fenParser = $fenParser;
+        $this->output = $output;
+    }
+
+    private function log(string $messages, $options)
+    {
+        $this->output->writeln($messages, $options);
     }
 
     /**
@@ -111,6 +122,7 @@ class ChessAnalyzer implements BufferAnalyzer
      */
     public function analyzeBoard(array $buffer): void
     {
+        $this->log(sprintf('method %s', __METHOD__), Output::VERBOSITY_DEBUG);
         $fen = $this->bufferToFen($buffer);
 
         if ($fen === $this->lastFen) {
@@ -123,6 +135,7 @@ class ChessAnalyzer implements BufferAnalyzer
             isset($this->validMoveFens[$fen]),
             $this->handleBoardUpdated($fen, $updatedFen)
         );
+        $this->log(sprintf('result for analyze board: %s', print_r($actions, true)), Output::VERBOSITY_VERBOSE);
 
         foreach ($actions as $actionName) {
             $this->doActionForAnalyzeBoard($actionName, $buffer, $updatedFen);
@@ -136,6 +149,8 @@ class ChessAnalyzer implements BufferAnalyzer
      */
     public function getResultForAnalyzeBoard(bool $moveFound, bool $boardUpdated) : array
     {
+        $this->log(sprintf('arguments for analyze board: %s', print_r(func_get_args(), true)), Output::VERBOSITY_VERBOSE);
+
         $actions = [];
 
         if ($moveFound) {
@@ -162,7 +177,7 @@ class ChessAnalyzer implements BufferAnalyzer
                 $move = $this->validMoveFens[$this->bufferToFen($buffer)];
                 $fenBefore = $this->fenParser->getFen();
                 $this->fenParser->move($move);
-                echo 'move completed: ' . $this->fenParser->getNotation() . PHP_EOL;
+                $this->log(sprintf('move completed: %s', $this->fenParser->getNotation()), Output::VERBOSITY_VERBOSE);
                 $this->handleLegalMoveCompleted($move, $fenBefore);
                 break;
             case self::RESET_VALID_MOVES:
@@ -176,6 +191,7 @@ class ChessAnalyzer implements BufferAnalyzer
      */
     public function analyzeMove(array $buffer): void
     {
+        $this->log(sprintf('method %s', __METHOD__), Output::VERBOSITY_DEBUG);
         $pieceNotation = $this->getPieceNotation($buffer[1]);
         $square = $this->getSquare($buffer[0]);
 
@@ -188,8 +204,6 @@ class ChessAnalyzer implements BufferAnalyzer
                 $handler->handlePieceRemoved($square);
             }
         }
-
-        $this->stream->write(DgtBoardStreamReader::SEND_BRD);
     }
 
     /**
@@ -263,7 +277,11 @@ class ChessAnalyzer implements BufferAnalyzer
                 $emptyCounter++;
             } else {
                 $line .= $emptyCounter > 0 ? $emptyCounter : '';
-                $line .= $this->getPieceNotation($piece);
+                try {
+                    $line .= $this->getPieceNotation($piece);
+                } catch (\Throwable $exception) {
+                    return '';
+                }
                 $emptyCounter = 0;
             }
 
@@ -319,6 +337,8 @@ class ChessAnalyzer implements BufferAnalyzer
                 $this->addValidMove($validMove);
             }
         }
+
+        $this->log(sprintf('valid moves reset: %s', print_r($this->validMoveFens, true)), Output::VERBOSITY_VERY_VERBOSE);
     }
 
     /**

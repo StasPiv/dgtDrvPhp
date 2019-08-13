@@ -4,6 +4,7 @@ namespace StasPiv\DgtDrvPhp\Tests\ChessAnalyzer;
 
 use StasPiv\DgtDrvPhp\BufferAnalyzer\ChessAnalyzer;
 use StasPiv\DgtDrvPhp\Stream\NullStream;
+use Symfony\Component\Console\Output\ConsoleOutput;
 
 class AnalyzeBoardTest extends \PHPUnit_Framework_TestCase
 {
@@ -12,7 +13,7 @@ class AnalyzeBoardTest extends \PHPUnit_Framework_TestCase
 
     protected function setUp()
     {
-        $this->chessAnalyzer = new ChessAnalyzer(new NullStream(), new \FenParser0x88());
+        $this->chessAnalyzer = new ChessAnalyzer(new NullStream(), new \FenParser0x88(), new ConsoleOutput());
     }
 
     public function testMakeMoveAndResetValidMovesWhenMoveFoundAndBoardUpdated()
