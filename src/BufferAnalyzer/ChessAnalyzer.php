@@ -8,29 +8,29 @@ use FenParser0x88Exception;
 use RuntimeException;
 use StasPiv\DgtDrvPhp\BufferAnalyzer;
 use StasPiv\DgtDrvPhp\Stream;
-use StasPiv\DgtDrvPhp\StreamReader\DgtBoardStreamReader;
 use Symfony\Component\Console\Output\Output;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
  * Class ChessAnalyzer
+ *
  * @package StasPiv\DgtDrvPhp\BufferAnalyzer
  */
 class ChessAnalyzer implements BufferAnalyzer
 {
-    const PIECE_EMPTY       = 0x00;
-    const PIECE_WPAWN       = 0x01;
-    const PIECE_WROOK       = 0x02;
-    const PIECE_WKNIGHT     = 0x03;
-    const PIECE_WBISHOP     = 0x04;
-    const PIECE_WKING       = 0x05;
-    const PIECE_WQUEEN      = 0x06;
-    const PIECE_BPAWN       = 0x07;
-    const PIECE_BROOK       = 0x08;
-    const PIECE_BKNIGHT     = 0x09;
-    const PIECE_BBISHOP     = 0x0a;
-    const PIECE_BKING       = 0x0b;
-    const PIECE_BQUEEN      = 0x0c;
+    const PIECE_EMPTY = 0x00;
+    const PIECE_WPAWN = 0x01;
+    const PIECE_WROOK = 0x02;
+    const PIECE_WKNIGHT = 0x03;
+    const PIECE_WBISHOP = 0x04;
+    const PIECE_WKING = 0x05;
+    const PIECE_WQUEEN = 0x06;
+    const PIECE_BPAWN = 0x07;
+    const PIECE_BROOK = 0x08;
+    const PIECE_BKNIGHT = 0x09;
+    const PIECE_BBISHOP = 0x0a;
+    const PIECE_BKING = 0x0b;
+    const PIECE_BQUEEN = 0x0c;
 
     const MAKE_MOVE = 'make-move';
     const HANDLE_MOVE_COMPLETED = 'handle-move-completed';
@@ -53,13 +53,14 @@ class ChessAnalyzer implements BufferAnalyzer
 
     /** @var string */
     private $lastFen;
-    
+
     /** @var OutputInterface */
     private $output;
 
     /**
      * ChessAnalyzer constructor.
-     * @param Stream $stream
+     *
+     * @param Stream        $stream
      * @param FenParser0x88 $fenParser
      */
     public function __construct(Stream $stream, FenParser0x88 $fenParser, OutputInterface $output)
@@ -76,6 +77,7 @@ class ChessAnalyzer implements BufferAnalyzer
 
     /**
      * @param bool $boardRotated
+     *
      * @return ChessAnalyzer
      */
     public function setBoardRotated(bool $boardRotated): ChessAnalyzer
@@ -86,6 +88,7 @@ class ChessAnalyzer implements BufferAnalyzer
 
     /**
      * @param HandlerInterface $handler
+     *
      * @return $this
      */
     public function addHandler(HandlerInterface $handler)
@@ -97,6 +100,7 @@ class ChessAnalyzer implements BufferAnalyzer
 
     /**
      * @param HandlerInterface $handler
+     *
      * @return $this
      */
     public function removeHandler(HandlerInterface $handler)
@@ -118,6 +122,7 @@ class ChessAnalyzer implements BufferAnalyzer
 
     /**
      * @param array $buffer
+     *
      * @throws Exception
      */
     public function analyzeBoard(array $buffer): void
@@ -145,9 +150,10 @@ class ChessAnalyzer implements BufferAnalyzer
     /**
      * @param bool $moveFound
      * @param bool $boardUpdated
+     *
      * @return array
      */
-    public function getResultForAnalyzeBoard(bool $moveFound, bool $boardUpdated) : array
+    public function getResultForAnalyzeBoard(bool $moveFound, bool $boardUpdated): array
     {
         $this->log(sprintf('arguments for analyze board: %s', print_r(func_get_args(), true)), Output::VERBOSITY_VERBOSE);
 
@@ -166,8 +172,8 @@ class ChessAnalyzer implements BufferAnalyzer
     }
 
     /**
-     * @param string $actionName
-     * @param array $buffer
+     * @param string      $actionName
+     * @param array       $buffer
      * @param string|null $updatedFen
      */
     private function doActionForAnalyzeBoard(string $actionName, array $buffer, string $updatedFen = null): void
@@ -177,7 +183,7 @@ class ChessAnalyzer implements BufferAnalyzer
                 $move = $this->validMoveFens[$this->bufferToFen($buffer)];
                 $fenBefore = $this->fenParser->getFen();
                 $this->fenParser->move($move);
-                $this->log(sprintf('move completed: %s', $this->fenParser->getNotation()), Output::VERBOSITY_VERBOSE);
+                $this->log(sprintf('move completed: %s, fen after: %s', $this->fenParser->getNotation(), $this->fenParser->getFen()), Output::VERBOSITY_VERBOSE);
                 $this->handleLegalMoveCompleted($move, $fenBefore);
                 break;
             case self::RESET_VALID_MOVES:
@@ -208,9 +214,10 @@ class ChessAnalyzer implements BufferAnalyzer
 
     /**
      * @param int $piece
+     *
      * @return string
      */
-    private function getPieceNotation(int $piece) : string
+    private function getPieceNotation(int $piece): string
     {
         switch ($piece) {
             case self::PIECE_EMPTY:
@@ -246,6 +253,7 @@ class ChessAnalyzer implements BufferAnalyzer
 
     /**
      * @param int $square
+     *
      * @return string
      */
     private function getSquare(int $square)
@@ -254,14 +262,15 @@ class ChessAnalyzer implements BufferAnalyzer
             $square = 63 - $square;
         }
 
-        return ('abcdefgh'){$square % 8}.(8 - (int)($square / 8));
+        return ('abcdefgh'){$square % 8} . (8 - (int)($square / 8));
     }
 
     /**
      * @param array $buffer
+     *
      * @return string
      */
-    private function bufferToFen(array $buffer) : string
+    private function bufferToFen(array $buffer): string
     {
         if ($this->boardRotated) {
             $buffer = array_reverse($buffer);
@@ -298,6 +307,7 @@ class ChessAnalyzer implements BufferAnalyzer
 
     /**
      * @param array $validMove
+     *
      * @throws Exception
      */
     private function addValidMove(array $validMove): void
@@ -343,7 +353,8 @@ class ChessAnalyzer implements BufferAnalyzer
 
     /**
      * @param string $fen
-     * @param $updatedFen
+     * @param        $updatedFen
+     *
      * @return bool
      */
     private function handleBoardUpdated(string $fen, &$updatedFen): bool
@@ -358,14 +369,15 @@ class ChessAnalyzer implements BufferAnalyzer
     }
 
     /**
-     * @param $move
+     * @param        $move
      * @param string $fenBefore
      */
     private function handleLegalMoveCompleted($move, string $fenBefore): void
     {
+        $fenAfter = $this->fenParser->getFen();
         foreach ($this->handlers as $handler) {
             if (!$handler->handleLegalMoveCompleted($move, $this->fenParser->getNotation(), $fenBefore,
-                $this->fenParser->getFen())) {
+                $fenAfter)) {
                 $this->resetValidMoves($fenBefore);
             }
         }
