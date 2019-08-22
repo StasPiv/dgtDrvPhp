@@ -56,6 +56,9 @@ class ChessAnalyzer implements BufferAnalyzer
 
     /** @var OutputInterface */
     private $output;
+    
+    /** @var array */
+    private $board;
 
     /**
      * ChessAnalyzer constructor.
@@ -115,9 +118,25 @@ class ChessAnalyzer implements BufferAnalyzer
     /**
      * @param array $buffer
      */
-    public function analyzeUpdate(array $buffer): void
+    public function analyzeMove(array $buffer): void
     {
-        // TODO: Implement analyzeUpdate() method.
+        $this->log(sprintf('method %s', __METHOD__), Output::VERBOSITY_DEBUG);
+        $pieceNotation = $this->getPieceNotation($buffer[1]);
+        $square = $this->getSquare($buffer[0]);
+
+        if (!empty($pieceNotation)) {
+            foreach ($this->handlers as $handler) {
+                $handler->handlePieceAdded($square, $pieceNotation);
+            }
+            $this->board[$buffer[0]] = $buffer[1];
+        } else {
+            foreach ($this->handlers as $handler) {
+                $handler->handlePieceRemoved($square);
+            }
+            $this->board[$buffer[0]] = self::PIECE_EMPTY;
+        }
+        
+        $this->analyzeBoard($this->board);
     }
 
     /**
@@ -127,6 +146,9 @@ class ChessAnalyzer implements BufferAnalyzer
      */
     public function analyzeBoard(array $buffer): void
     {
+        $this->board = $buffer;
+        
+        $this->log(sprintf('buffer: %s', json_encode($buffer)), Output::VERBOSITY_DEBUG);
         $this->log(sprintf('method %s', __METHOD__), Output::VERBOSITY_DEBUG);
         $fen = $this->bufferToFen($buffer);
 
@@ -145,6 +167,14 @@ class ChessAnalyzer implements BufferAnalyzer
         foreach ($actions as $actionName) {
             $this->doActionForAnalyzeBoard($actionName, $buffer, $updatedFen);
         }
+    }
+
+    /**
+     * @param array $buffer
+     */
+    public function analyzeUpdate(array $buffer): void
+    {
+        $this->log(__METHOD__ . json_encode($buffer), Output::VERBOSITY_DEBUG);
     }
 
     /**
@@ -189,26 +219,6 @@ class ChessAnalyzer implements BufferAnalyzer
             case self::RESET_VALID_MOVES:
                 $this->resetValidMoves($updatedFen);
                 break;
-        }
-    }
-
-    /**
-     * @param array $buffer
-     */
-    public function analyzeMove(array $buffer): void
-    {
-        $this->log(sprintf('method %s', __METHOD__), Output::VERBOSITY_DEBUG);
-        $pieceNotation = $this->getPieceNotation($buffer[1]);
-        $square = $this->getSquare($buffer[0]);
-
-        if (!empty($pieceNotation)) {
-            foreach ($this->handlers as $handler) {
-                $handler->handlePieceAdded($square, $pieceNotation);
-            }
-        } else {
-            foreach ($this->handlers as $handler) {
-                $handler->handlePieceRemoved($square);
-            }
         }
     }
 
