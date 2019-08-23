@@ -136,7 +136,7 @@ class ChessAnalyzer implements BufferAnalyzer
             $this->board[$buffer[0]] = self::PIECE_EMPTY;
         }
         
-        $this->analyzeBoard($this->board);
+        $this->performAnalyzeBoard($this->board);
     }
 
     /**
@@ -146,27 +146,7 @@ class ChessAnalyzer implements BufferAnalyzer
      */
     public function analyzeBoard(array $buffer): void
     {
-        $this->board = $buffer;
-        
-        $this->log(sprintf('buffer: %s', json_encode($buffer)), Output::VERBOSITY_DEBUG);
-        $this->log(sprintf('method %s', __METHOD__), Output::VERBOSITY_DEBUG);
-        $fen = $this->bufferToFen($buffer);
-
-        if ($fen === $this->lastFen) {
-            return;
-        }
-
-        $this->lastFen = $fen;
-
-        $actions = $this->getResultForAnalyzeBoard(
-            isset($this->validMoveFens[$fen]),
-            $this->handleBoardUpdated($fen, $updatedFen)
-        );
-        $this->log(sprintf('result for analyze board: %s', print_r($actions, true)), Output::VERBOSITY_VERBOSE);
-
-        foreach ($actions as $actionName) {
-            $this->doActionForAnalyzeBoard($actionName, $buffer, $updatedFen);
-        }
+        $this->performAnalyzeBoard($this->board = $buffer);
     }
 
     /**
@@ -390,6 +370,32 @@ class ChessAnalyzer implements BufferAnalyzer
                 $fenAfter)) {
                 $this->resetValidMoves($fenBefore);
             }
+        }
+    }
+
+    /**
+     * @param array $buffer
+     */
+    private function performAnalyzeBoard(array $buffer): void
+    {
+        $this->log(sprintf('buffer: %s', json_encode($buffer)), Output::VERBOSITY_DEBUG);
+        $this->log(sprintf('method %s', __METHOD__), Output::VERBOSITY_DEBUG);
+        $fen = $this->bufferToFen($buffer);
+
+        if ($fen === $this->lastFen) {
+            return;
+        }
+
+        $this->lastFen = $fen;
+
+        $actions = $this->getResultForAnalyzeBoard(
+            isset($this->validMoveFens[$fen]),
+            $this->handleBoardUpdated($fen, $updatedFen)
+        );
+        $this->log(sprintf('result for analyze board: %s', print_r($actions, true)), Output::VERBOSITY_VERBOSE);
+
+        foreach ($actions as $actionName) {
+            $this->doActionForAnalyzeBoard($actionName, $buffer, $updatedFen);
         }
     }
 
