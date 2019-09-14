@@ -57,15 +57,12 @@ class DgtBoardStreamReader implements StreamReader
             case self::MESSAGE_BOARD:
                 $this->partSize = self::PART_SIZE_BOARD;
                 break;
-            case self::MESSAGE_UPDATE:
-                $this->partSize = self::PART_SIZE_UPDATE;
-                break;
             case self::MESSAGE_MOVE:
                 $this->partSize = self::PART_SIZE_MOVE;
                 break;
         }
 
-        if (in_array($boardMessage, [self::MESSAGE_BOARD, self::MESSAGE_UPDATE, self::MESSAGE_MOVE])) {
+        if (in_array($boardMessage, [self::MESSAGE_BOARD, self::MESSAGE_MOVE])) {
             $this->flushBuffer();
             $this->setMessageType($boardMessage);
         }
@@ -77,9 +74,6 @@ class DgtBoardStreamReader implements StreamReader
 
             foreach ($this->analyzers as $analyzer) {
                 switch ($this->getMessageType()) {
-                    case self::MESSAGE_UPDATE:
-                        $analyzer->analyzeUpdate($this->buffer);
-                        break;
                     case self::MESSAGE_MOVE:
                         $analyzer->analyzeMove($this->buffer);
                         break;

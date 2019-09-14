@@ -33,6 +33,7 @@ class Stream implements \SplSubject
         }
 
         $port = '/dev/' . $output[0];
+        exec('minicom -o ' . $port);
         $this->handle = fopen($port, 'w+');
 
         if (!$this->handle) {
