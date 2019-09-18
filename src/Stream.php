@@ -70,7 +70,7 @@ class Stream implements \SplSubject
 
     private function read(): int
     {
-        return ord(fread($this->handle, 1));
+        return ord(fread($this->pipes[1], 1));
     }
 
     public function attach(SplObserver $observer)
