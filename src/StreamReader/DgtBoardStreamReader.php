@@ -11,17 +11,17 @@ use StasPiv\DgtDrvPhp\StreamReader;
 class DgtBoardStreamReader implements StreamReader
 {
     /* Message sent to the board */
-    const SEND_CLK           = 0x41;
-    const SEND_BRD           = 0x42;
-    const SEND_UPDATE        = 0x43;
-    const SEND_UPDATE_BRD    = 0x44;
-    const SEND_SERIALNR      = 0x45;
-    const SEND_BUSADDRESS    = 0x46;
-    const SEND_TRADEMARK     = 0x47;
-    const SEND_VERSION       = 0x4d;
-    const SEND_UPDATE_NICE   = 0x4b;
-    const SEND_EE_MOVES      = 0x49;
-    const SEND_RESET         = 0x40;
+    const SEND_RESET         = 0x40; // @
+    const SEND_CLK           = 0x41; // A
+    const SEND_BRD           = 0x42; // B
+    const SEND_UPDATE        = 0x43; // C
+    const SEND_UPDATE_BRD    = 0x44; // D
+    const SEND_SERIALNR      = 0x45; // E
+    const SEND_BUSADDRESS    = 0x46; // F
+    const SEND_TRADEMARK     = 0x47; // G
+    const SEND_VERSION       = 0x4d; // H
+    const SEND_UPDATE_NICE   = 0x4b; // I
+    const SEND_EE_MOVES      = 0x49; // J
 
     const MESSAGE_BOARD      = 0x86;
     const MESSAGE_UPDATE     = 0x8d;
@@ -83,6 +83,10 @@ class DgtBoardStreamReader implements StreamReader
                         break;
                 }
             }
+        }
+
+        if (in_array($this->buffer, [[142,0,5,0], [142,0,5,3]])) {
+            $stream->write(DgtBoardStreamReader::SEND_BRD);
         }
     }
 

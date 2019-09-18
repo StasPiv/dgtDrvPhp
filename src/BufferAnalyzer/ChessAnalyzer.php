@@ -120,7 +120,7 @@ class ChessAnalyzer implements BufferAnalyzer
      */
     public function analyzeMove(array $buffer): void
     {
-        $this->log(sprintf('method %s', __METHOD__), Output::VERBOSITY_DEBUG);
+        $this->log(sprintf('method %s, buffer: %s', __METHOD__, json_encode($buffer)), Output::VERBOSITY_DEBUG);
         $pieceNotation = $this->getPieceNotation($buffer[1]);
         $square = $this->getSquare($buffer[0]);
 

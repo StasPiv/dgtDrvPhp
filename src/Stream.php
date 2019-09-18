@@ -3,6 +3,7 @@
 namespace StasPiv\DgtDrvPhp;
 
 use SplObserver;
+use StasPiv\DgtDrvPhp\StreamReader\DgtBoardStreamReader;
 
 /**
  * Read and write to Dgt Board stream
@@ -21,6 +22,12 @@ class Stream implements \SplSubject
     /** @var int  */
     private $boardMessage;
 
+    /** @var string */
+    private $port;
+
+    /** @var array */
+    private $pipes;
+
     /**
      * DgtBoardStream constructor.
      */
@@ -32,12 +39,16 @@ class Stream implements \SplSubject
             throw new \RuntimeException('Unable to find DGT board or too many devices connected');
         }
 
-        $port = '/dev/' . $output[0];
-        exec('minicom -o ' . $port);
-        $this->handle = fopen($port, 'w+');
+        $this->port = '/dev/' . $output[0];
+
+        $this->handle = proc_open('cu -l ' . $this->port . ' -s baud-rate-speed', array(
+            0 => array("pipe", "r"),  // stdin is a pipe that the child will read from
+            1 => array("pipe", "w"),  // stdout is a pipe that the child will write to
+            2 => array("file", 'tty-error.txt' , "a")   // stderr is a file to write to
+        ), $this->pipes);
 
         if (!$this->handle) {
-            throw new \RuntimeException('Unable to open port ' . $port);
+            throw new \RuntimeException('Unable to open port ' . $this->port);
         }
     }
 
@@ -54,7 +65,7 @@ class Stream implements \SplSubject
 
     public function write(int $number)
     {
-        fwrite($this->handle, chr($number), 1);
+        fwrite($this->pipes[0], chr($number), 1);
     }
 
     private function read(): int
@@ -101,6 +112,12 @@ class Stream implements \SplSubject
 
     public function __destruct()
     {
-        fclose($this->handle);
+        $this->write(DgtBoardStreamReader::SEND_RESET);
+
+        foreach ($this->pipes as $pipe) {
+            fclose($pipe);
+        }
+
+        proc_close($this->handle);
     }
 }
