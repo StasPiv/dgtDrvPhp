@@ -86,6 +86,7 @@ class DgtBoardStreamReader implements StreamReader
         }
 
         if (in_array($this->buffer, [[142,0,5,0], [142,0,5,3]])) {
+            // workaround for b6 and d6. for some reason these fields aren't recognized by "cu"
             $stream->write(DgtBoardStreamReader::SEND_BRD);
         }
     }
