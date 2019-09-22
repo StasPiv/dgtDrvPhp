@@ -58,7 +58,7 @@ class ChessAnalyzer implements BufferAnalyzer
     private $output;
     
     /** @var array */
-    private $board;
+    private $board = [];
 
     /**
      * ChessAnalyzer constructor.
@@ -146,6 +146,7 @@ class ChessAnalyzer implements BufferAnalyzer
      */
     public function analyzeBoard(array $buffer): void
     {
+        $this->analyzeExceptions($buffer);
         $this->performAnalyzeBoard($this->board = $buffer);
     }
 
@@ -399,4 +400,25 @@ class ChessAnalyzer implements BufferAnalyzer
         }
     }
 
+    /**
+     * @param array $buffer
+     */
+    private function analyzeExceptions(array $buffer): void
+    {
+        $diff = array_diff($buffer, $this->board);
+
+        foreach ([17, 19] as $exceptionField) {
+            if (isset($diff[$exceptionField])) {
+                $this->analyzeMove([$exceptionField, $diff[$exceptionField]]);
+            }
+        }
+
+        $reverseDiff = array_diff($this->board, $buffer);
+
+        foreach ([17, 19] as $exceptionField) {
+            if (isset($reverseDiff[$exceptionField])) {
+                $this->analyzeMove([$exceptionField, 0]);
+            }
+        }
+    }
 }

@@ -44,7 +44,7 @@ class Stream implements \SplSubject
         $this->handle = proc_open('cu -l ' . $this->port . ' -s baud-rate-speed', array(
             0 => array("pipe", "r"),  // stdin is a pipe that the child will read from
             1 => array("pipe", "w"),  // stdout is a pipe that the child will write to
-            2 => array("file", 'tty-error.txt' , "a")   // stderr is a file to write to
+            2 => array("file", 'tty-error.txt' , "w")   // stderr is a file to write to
         ), $this->pipes);
 
         if (!$this->handle) {
@@ -54,6 +54,11 @@ class Stream implements \SplSubject
 
     public function start(callable $callable = null)
     {
+        $errorContent = file_get_contents('tty-error.txt');
+        if (!empty($errorContent)) {
+            throw new \RuntimeException($errorContent);
+        }
+
         while (true) {
             $this->setBoardMessage($this->read());
             $this->notify();
