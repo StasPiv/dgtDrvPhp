@@ -166,7 +166,7 @@ class ChessAnalyzer implements BufferAnalyzer
      */
     public function getResultForAnalyzeBoard(bool $moveFound, bool $boardUpdated): array
     {
-        $this->log(sprintf('arguments for analyze board: %s', print_r(func_get_args(), true)), Output::VERBOSITY_VERBOSE);
+        $this->log(sprintf('arguments for analyze board: %s', print_r(func_get_args(), true)), Output::VERBOSITY_DEBUG);
 
         $actions = [];
 
@@ -393,7 +393,7 @@ class ChessAnalyzer implements BufferAnalyzer
             isset($this->validMoveFens[$fen]),
             $this->handleBoardUpdated($fen, $updatedFen)
         );
-        $this->log(sprintf('result for analyze board: %s', print_r($actions, true)), Output::VERBOSITY_VERBOSE);
+        $this->log(sprintf('result for analyze board: %s', print_r($actions, true)), Output::VERBOSITY_DEBUG);
 
         foreach ($actions as $actionName) {
             $this->doActionForAnalyzeBoard($actionName, $buffer, $updatedFen);
@@ -405,7 +405,17 @@ class ChessAnalyzer implements BufferAnalyzer
      */
     private function analyzeExceptions(array $buffer): void
     {
-        $diff = array_diff($buffer, $this->board);
+        $diff = array_diff_assoc($buffer, $this->board);
+
+        $this->output->writeln(
+            sprintf(
+                'Buffer: %s, board: %s, diff: %s',
+                json_encode($buffer),
+                json_encode($this->board),
+                json_encode($diff)
+            ),
+            OutputInterface::VERBOSITY_DEBUG
+        );
 
         foreach ([17, 19] as $exceptionField) {
             if (isset($diff[$exceptionField])) {
