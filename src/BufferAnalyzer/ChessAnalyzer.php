@@ -423,7 +423,7 @@ class ChessAnalyzer implements BufferAnalyzer
             }
         }
 
-        $reverseDiff = array_diff($this->board, $buffer);
+        $reverseDiff = array_diff_assoc($this->board, $buffer);
 
         foreach ([17, 19] as $exceptionField) {
             if (isset($reverseDiff[$exceptionField])) {
