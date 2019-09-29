@@ -3,6 +3,8 @@
 namespace StasPiv\DgtDrvPhp;
 
 use SplObserver;
+use StasPiv\DgtDrvPhp\Exception\UnknownConnectionType;
+use StasPiv\DgtDrvPhp\Stream\ConnectionType;
 use StasPiv\DgtDrvPhp\StreamReader\DgtBoardStreamReader;
 
 /**
@@ -27,13 +29,28 @@ class Stream implements \SplSubject
 
     /** @var array */
     private $pipes;
+    
+    /** @var int */
+    private $connectionType;
 
     /**
      * DgtBoardStream constructor.
      */
-    public function __construct()
+    public function __construct(int $connectionType = ConnectionType::BLUETOOTH)
     {
-        exec('ls /dev/ | grep ttyACM', $output);
+        $this->connectionType = $connectionType;
+
+        switch ($this->connectionType) {
+            case ConnectionType::BLUETOOTH:
+                exec('ls /dev/ | grep rfcomm', $output);
+                $output = [$output[array_key_last($output)]];
+                break;
+            case ConnectionType::USB:
+                exec('ls /dev/ | grep ttyACM', $output);
+                break;
+            default:
+                throw new UnknownConnectionType(sprintf('Unkown connection type: %s', $connectionType));
+        }
 
         if (!isset($output) || count($output) !== 1) {
             throw new \RuntimeException('Unable to find DGT board or too many devices connected');
