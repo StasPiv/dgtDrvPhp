@@ -36,9 +36,6 @@ class ChessAnalyzer implements BufferAnalyzer
     const HANDLE_MOVE_COMPLETED = 'handle-move-completed';
     const RESET_VALID_MOVES = 'reset-valid-moves';
 
-    /** @var Stream */
-    private $stream;
-
     private $boardRotated = true;
 
     /**
@@ -63,12 +60,11 @@ class ChessAnalyzer implements BufferAnalyzer
     /**
      * ChessAnalyzer constructor.
      *
-     * @param Stream        $stream
-     * @param FenParser0x88 $fenParser
+     * @param FenParser0x88   $fenParser
+     * @param OutputInterface $output
      */
-    public function __construct(Stream $stream, FenParser0x88 $fenParser, OutputInterface $output)
+    public function __construct(FenParser0x88 $fenParser, OutputInterface $output)
     {
-        $this->stream = $stream;
         $this->fenParser = $fenParser;
         $this->output = $output;
     }

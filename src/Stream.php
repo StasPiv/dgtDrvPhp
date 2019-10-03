@@ -5,6 +5,7 @@ namespace StasPiv\DgtDrvPhp;
 use SplObserver;
 use StasPiv\DgtDrvPhp\Exception\UnknownConnectionType;
 use StasPiv\DgtDrvPhp\Stream\ConnectionType;
+use StasPiv\DgtDrvPhp\Stream\SplSubjectTrait;
 use StasPiv\DgtDrvPhp\StreamReader\DgtBoardStreamReader;
 
 /**
@@ -13,16 +14,12 @@ use StasPiv\DgtDrvPhp\StreamReader\DgtBoardStreamReader;
  * Class Stream
  * @package StasPiv\DgtDrvPhp
  */
-class Stream implements \SplSubject
+class Stream implements StreamInterface
 {
+    use SplSubjectTrait;
+
     /** @var bool|resource */
     private $handle;
-
-    /** @var StreamReader[] */
-    private $readers;
-
-    /** @var int  */
-    private $boardMessage;
 
     /** @var string */
     private $port;
@@ -35,6 +32,8 @@ class Stream implements \SplSubject
 
     /**
      * DgtBoardStream constructor.
+     *
+     * @param int $connectionType
      */
     public function __construct(int $connectionType = ConnectionType::BLUETOOTH)
     {
@@ -93,43 +92,6 @@ class Stream implements \SplSubject
     private function read(): int
     {
         return ord(fread($this->pipes[1], 1));
-    }
-
-    public function attach(SplObserver $observer)
-    {
-        $this->readers[] = $observer;
-    }
-
-    public function detach(SplObserver $observer)
-    {
-        if (($key = array_search($observer, $this->readers)) !== false) {
-            unset($this->readers[$key]);
-        }
-    }
-
-    public function notify()
-    {
-        foreach ($this->readers as $reader) {
-            $reader->update($this);
-        }
-    }
-
-    /**
-     * @return int
-     */
-    public function getBoardMessage(): int
-    {
-        return $this->boardMessage;
-    }
-
-    /**
-     * @param string $boardMessage
-     * @return Stream
-     */
-    public function setBoardMessage(string $boardMessage): Stream
-    {
-        $this->boardMessage = $boardMessage;
-        return $this;
     }
 
     public function __destruct()

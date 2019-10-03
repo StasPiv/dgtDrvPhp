@@ -25,7 +25,8 @@
     "chesscom/chess-game": "~1.1",
     "DHTMLGoodies/chessParser": "dev-master",
     "symfony/process": "^4.3",
-    "symfony/console": "^4.3"
+    "symfony/console": "^4.3",
+    "textalk/websocket": "^1.2"
   },
   "require-dev": {
 
