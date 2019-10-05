@@ -254,12 +254,13 @@ class ChessAnalyzer implements BufferAnalyzer
 
     /**
      * @param array $buffer
+     * @param bool  $whiteAlwaysBelow
      *
      * @return string
      */
-    private function bufferToFen(array $buffer): string
+    private function bufferToFen(array $buffer, bool $whiteAlwaysBelow = false): string
     {
-        if ($this->boardRotated) {
+        if ($this->boardRotated && !$whiteAlwaysBelow) {
             $buffer = array_reverse($buffer);
         }
 
@@ -342,14 +343,16 @@ class ChessAnalyzer implements BufferAnalyzer
      * @param string $fen
      * @param        $updatedFen
      *
+     * @param string $whiteBelowFen
+     *
      * @return bool
      */
-    private function handleBoardUpdated(string $fen, &$updatedFen): bool
+    private function handleBoardUpdated(string $fen, &$updatedFen, string $whiteBelowFen): bool
     {
         $ret = true;
 
         foreach ($this->handlers as $handler) {
-            $ret &= $handler->handleBoardUpdated($fen, $updatedFen);
+            $ret &= $handler->handleBoardUpdated($fen, $whiteBelowFen, $updatedFen);
         }
 
         return $ret;
@@ -378,6 +381,8 @@ class ChessAnalyzer implements BufferAnalyzer
         $this->log(sprintf('buffer: %s', json_encode($buffer)), Output::VERBOSITY_DEBUG);
         $this->log(sprintf('method %s', __METHOD__), Output::VERBOSITY_DEBUG);
         $fen = $this->bufferToFen($buffer);
+        $whiteBelowFen = $this->bufferToFen($buffer, true);
+        $this->log(sprintf('fen: %s', $fen), Output::VERBOSITY_DEBUG);
 
         if ($fen === $this->lastFen) {
             return;
@@ -387,7 +392,7 @@ class ChessAnalyzer implements BufferAnalyzer
 
         $actions = $this->getResultForAnalyzeBoard(
             isset($this->validMoveFens[$fen]),
-            $this->handleBoardUpdated($fen, $updatedFen)
+            $this->handleBoardUpdated($fen, $updatedFen, $whiteBelowFen)
         );
         $this->log(sprintf('result for analyze board: %s', print_r($actions, true)), Output::VERBOSITY_DEBUG);
 

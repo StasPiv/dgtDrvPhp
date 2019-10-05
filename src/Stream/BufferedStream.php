@@ -4,6 +4,7 @@ namespace StasPiv\DgtDrvPhp\Stream;
 
 use StasPiv\DgtDrvPhp\StreamInterface;
 use WebSocket\Client;
+use WebSocket\ConnectionException;
 
 /**
  * Class BufferedStream
@@ -30,8 +31,12 @@ class BufferedStream implements StreamInterface
     public function start(callable $callable = null)
     {
         while (true) {
-            $receivedMessage = $this->wsClient->receive();
-            $this->readFromWebsocket($receivedMessage);
+            try {
+                $receivedMessage = $this->wsClient->receive();
+                $this->readFromWebsocket($receivedMessage);
+            } catch (ConnectionException $exception) {
+                continue;
+            }
         }
     }
 
