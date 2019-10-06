@@ -341,18 +341,18 @@ class ChessAnalyzer implements BufferAnalyzer
 
     /**
      * @param string $fen
-     * @param        $updatedFen
-     *
+     * @param string $updatedFen
      * @param string $whiteBelowFen
+     * @param bool   $theSameFen
      *
      * @return bool
      */
-    private function handleBoardUpdated(string $fen, &$updatedFen, string $whiteBelowFen): bool
+    private function handleBoardUpdated(string $fen, &$updatedFen, string $whiteBelowFen, bool $theSameFen = false): bool
     {
         $ret = true;
 
         foreach ($this->handlers as $handler) {
-            $ret &= $handler->handleBoardUpdated($fen, $whiteBelowFen, $updatedFen);
+            $ret &= $handler->handleBoardUpdated($fen, $whiteBelowFen, $updatedFen, $theSameFen);
         }
 
         return $ret;
@@ -384,15 +384,13 @@ class ChessAnalyzer implements BufferAnalyzer
         $whiteBelowFen = $this->bufferToFen($buffer, true);
         $this->log(sprintf('fen: %s', $fen), Output::VERBOSITY_DEBUG);
 
-        if ($fen === $this->lastFen) {
-            return;
-        }
+        $theSameFen = $fen === $this->lastFen;
 
         $this->lastFen = $fen;
 
         $actions = $this->getResultForAnalyzeBoard(
             isset($this->validMoveFens[$fen]),
-            $this->handleBoardUpdated($fen, $updatedFen, $whiteBelowFen)
+            $this->handleBoardUpdated($fen, $updatedFen, $whiteBelowFen, $theSameFen)
         );
         $this->log(sprintf('result for analyze board: %s', print_r($actions, true)), Output::VERBOSITY_DEBUG);
 

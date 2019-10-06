@@ -16,7 +16,7 @@ class SomeNewHandler implements HandlerInterface
         var_dump(func_get_args());
     }
 
-    public function handleBoardUpdated(string $newFen, string $whiteBelowFen, &$updatedFen = null): bool
+    public function handleBoardUpdated(string $newFen, string $whiteBelowFen, &$updatedFen = null, $theSameFen = false): bool
     {
         var_dump(func_get_args());
         return false;

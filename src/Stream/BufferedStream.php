@@ -42,7 +42,7 @@ class BufferedStream implements StreamInterface
 
     public function write(int $number)
     {
-        $this->wsClient->send(chr($number));
+        $this->wsClient->send('SEND TO DGT: ' . chr($number));
     }
 
     /**
@@ -53,11 +53,6 @@ class BufferedStream implements StreamInterface
         for ($i = 0; $i < strlen($buffer); $i++) {
             foreach ($this->readers as $reader) {
                 $boardMessage = ord($buffer{$i});
-
-                if (dechex($boardMessage) === 'c2') { // first symbol
-                    continue;
-                }
-
                 $this->setBoardMessage($boardMessage);
                 $reader->update($this);
             }
