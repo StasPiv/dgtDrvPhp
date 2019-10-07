@@ -2,9 +2,11 @@
 
 namespace StasPiv\DgtDrvPhp\Stream;
 
+use StasPiv\DgtDrvPhp\Stream\BufferedStream\Event\NewMessageReceived;
+use StasPiv\DgtDrvPhp\Stream\BufferedStream\Event\SendMessageRequested;
+use StasPiv\DgtDrvPhp\Stream\BufferedStream\Event\StartListeningWebsocket;
 use StasPiv\DgtDrvPhp\StreamInterface;
-use WebSocket\Client;
-use WebSocket\ConnectionException;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Class BufferedStream
@@ -15,34 +17,32 @@ class BufferedStream implements StreamInterface
 {
     use SplSubjectTrait;
 
-    /** @var Client */
-    private $wsClient;
+    /** @var EventDispatcherInterface */
+    private $dispatcher;
 
     /**
      * BufferedStream constructor.
      *
-     * @param Client $wsClient
+     * @param EventDispatcherInterface $dispatcher
      */
-    public function __construct(Client $wsClient)
+    public function __construct(EventDispatcherInterface $dispatcher)
     {
-        $this->wsClient = $wsClient;
+        $this->dispatcher = $dispatcher;
     }
 
     public function start(callable $callable = null)
     {
-        while (true) {
-            try {
-                $receivedMessage = $this->wsClient->receive();
-                $this->readFromWebsocket($receivedMessage);
-            } catch (ConnectionException $exception) {
-                continue;
-            }
-        }
+        $this->dispatcher->dispatch(new StartListeningWebsocket());
+    }
+
+    public function onNewMessageReceived(NewMessageReceived $event)
+    {
+        $this->readFromWebsocket($event->getMessage());
     }
 
     public function write(int $number)
     {
-        $this->wsClient->send('SEND TO DGT: ' . chr($number));
+        $this->dispatcher->dispatch(new SendMessageRequested('SEND TO DGT: ' . chr($number)));
     }
 
     /**

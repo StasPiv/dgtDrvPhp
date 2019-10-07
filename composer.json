@@ -26,7 +26,8 @@
     "DHTMLGoodies/chessParser": "dev-master",
     "symfony/process": "^4.3",
     "symfony/console": "^4.3",
-    "textalk/websocket": "^1.2"
+    "textalk/websocket": "^1.2",
+    "symfony/event-dispatcher": "^4.3"
   },
   "require-dev": {
 
