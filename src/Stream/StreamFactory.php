@@ -2,6 +2,8 @@
 
 namespace StasPiv\DgtDrvPhp\Stream;
 
+use StasPiv\ChessTrain\Event\BeforeInfiniteAnalyzeEvent;
+use StasPiv\ChessTrain\Event\EngineOutputReceivedEvent;
 use StasPiv\DgtDrvPhp\Exception\OptionsRequiredException;
 use StasPiv\DgtDrvPhp\Exception\UnknownStreamTypeException;
 use StasPiv\DgtDrvPhp\Stream;
@@ -30,6 +32,8 @@ class StreamFactory
                 $dispatcher->addListener(NewMessageReceived::class, [$bufferedStream, 'onNewMessageReceived']);
                 $dispatcher->addListener(StartListeningWebsocket::class, [$websocketListener, 'onStartListening']);
                 $dispatcher->addListener(SendMessageRequested::class, [$websocketListener, 'onSendMessageRequested']);
+                $dispatcher->addListener(EngineOutputReceivedEvent::class, [$websocketListener, 'onEngineOutputReceived']);
+                $dispatcher->addListener(BeforeInfiniteAnalyzeEvent::class, [$websocketListener, 'onBeforeInfiniteAnalyze']);
 
                 return $bufferedStream;
             case StreamType::CU:

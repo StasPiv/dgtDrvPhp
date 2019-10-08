@@ -2,6 +2,9 @@
 
 namespace StasPiv\DgtDrvPhp\Stream\BufferedStream;
 
+use ReflectionClass;
+use StasPiv\ChessTrain\Event\BeforeInfiniteAnalyzeEvent;
+use StasPiv\ChessTrain\Event\EngineOutputReceivedEvent;
 use StasPiv\DgtDrvPhp\Stream\BufferedStream\Event\NewMessageReceived;
 use StasPiv\DgtDrvPhp\Stream\BufferedStream\Event\SendMessageRequested;
 use StasPiv\DgtDrvPhp\Stream\BufferedStream\Event\StartListeningWebsocket;
@@ -37,6 +40,21 @@ class WebsocketListener
     public function onSendMessageRequested(SendMessageRequested $event)
     {
         $this->wsClient->send($event->getMessage());
+    }
+
+    public function onEngineOutputReceived(EngineOutputReceivedEvent $event)
+    {
+        if (preg_match('/seldepth/', $event->getEngineOutput())) {
+            $this->wsClient->send('Engine output: ' . $event->getEngineOutput());
+        }
+    }
+
+    public function onBeforeInfiniteAnalyze(BeforeInfiniteAnalyzeEvent $event)
+    {
+        $reflectionClass = new ReflectionClass($this->wsClient);
+        $reflectionProperty = $reflectionClass->getProperty('is_connected');
+        $reflectionProperty->setAccessible(true);
+        $reflectionProperty->setValue($this->wsClient, false);
     }
 
     private function listen()
