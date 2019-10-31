@@ -80,7 +80,7 @@ class DgtBoardStreamReader implements StreamReader
                         break;
                     case self::MESSAGE_BOARD:
                         $this->bufferBoard = $this->buffer;
-                        $analyzer->analyzeBoard($this->buffer);
+                        $analyzer->analyzeBoard($this->buffer, $stream instanceof Stream);
                         break;
                 }
             }

@@ -15,8 +15,9 @@ interface BufferAnalyzer
 
     /**
      * @param array $buffer
+     * @param bool  $analyzeExceptions
      */
-    public function analyzeBoard(array $buffer) : void;
+    public function analyzeBoard(array $buffer, bool $analyzeExceptions = false) : void;
 
     /**
      * @param array $buffer
