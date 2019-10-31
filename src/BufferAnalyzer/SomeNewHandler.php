@@ -22,7 +22,7 @@ class SomeNewHandler implements HandlerInterface
         return false;
     }
 
-    public function handleLegalMoveCompleted(array $move, string $moveNotation, string $fenBefore, string $fenAfter): bool
+    public function handleLegalMoveCompleted(array $move, string $moveNotation, string $fenBefore, string $fenAfter, &$resetAfterLegalMove = false): bool
     {
         var_dump(func_get_args());
         return true;

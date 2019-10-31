@@ -138,11 +138,16 @@ class ChessAnalyzer implements BufferAnalyzer
     /**
      * @param array $buffer
      *
+     * @param bool  $analyzeExceptions
+     *
      * @throws Exception
      */
-    public function analyzeBoard(array $buffer): void
+    public function analyzeBoard(array $buffer, bool $analyzeExceptions = false): void
     {
-        $this->analyzeExceptions($buffer);
+        if ($analyzeExceptions) {
+            $this->analyzeExceptions($buffer);
+        }
+
         $this->performAnalyzeBoard($this->board = $buffer);
     }
 
@@ -194,6 +199,7 @@ class ChessAnalyzer implements BufferAnalyzer
                 $this->handleLegalMoveCompleted($move, $fenBefore);
                 break;
             case self::RESET_VALID_MOVES:
+                $this->log(sprintf('updatedFen in handleBoardUpdated: %s', $updatedFen), Output::VERBOSITY_DEBUG);
                 $this->resetValidMoves($updatedFen);
                 break;
         }
@@ -349,10 +355,12 @@ class ChessAnalyzer implements BufferAnalyzer
      */
     private function handleBoardUpdated(string $fen, &$updatedFen, string $whiteBelowFen, bool $theSameFen = false): bool
     {
-        $ret = true;
+        $ret = false;
 
         foreach ($this->handlers as $handler) {
-            $ret &= $handler->handleBoardUpdated($fen, $whiteBelowFen, $updatedFen, $theSameFen);
+            if ($handler->handleBoardUpdated($fen, $whiteBelowFen, $updatedFen, $theSameFen)) {
+                $ret = true;
+            }
         }
 
         return $ret;
@@ -364,11 +372,19 @@ class ChessAnalyzer implements BufferAnalyzer
      */
     private function handleLegalMoveCompleted($move, string $fenBefore): void
     {
+        $this->log(__METHOD__, Output::VERBOSITY_VERBOSE);
         $fenAfter = $this->fenParser->getFen();
         foreach ($this->handlers as $handler) {
-            if (!$handler->handleLegalMoveCompleted($move, $this->fenParser->getNotation(), $fenBefore,
-                $fenAfter)) {
+            if (!$handler->handleLegalMoveCompleted($move, $this->fenParser->getNotation(), $fenBefore, $fenAfter, $resetAfterLegalMove)) {
+                $this->log(sprintf('Fen before legal move completed: %s', $fenAfter), Output::VERBOSITY_DEBUG);
                 $this->resetValidMoves($fenBefore);
+                continue;
+            }
+
+            if ($resetAfterLegalMove) {
+                $this->log(sprintf('Fen after legal move completed: %s', $fenAfter), Output::VERBOSITY_DEBUG);
+                $this->resetValidMoves($fenAfter);
+                break;
             }
         }
     }
