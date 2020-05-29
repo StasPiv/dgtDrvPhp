@@ -116,7 +116,6 @@ class ChessAnalyzer implements BufferAnalyzer
      */
     public function analyzeMove(array $buffer): void
     {
-        $this->log(sprintf('method %s, buffer: %s', __METHOD__, json_encode($buffer)), Output::VERBOSITY_DEBUG);
         $pieceNotation = $this->getPieceNotation($buffer[1]);
         $square = $this->getSquare($buffer[0]);
 
@@ -255,7 +254,7 @@ class ChessAnalyzer implements BufferAnalyzer
             $square = 63 - $square;
         }
 
-        return ('abcdefgh'){$square % 8} . (8 - (int)($square / 8));
+        return substr('abcdefgh', $square % 8, 1) . (8 - (int)($square / 8));
     }
 
     /**
@@ -329,7 +328,7 @@ class ChessAnalyzer implements BufferAnalyzer
                     'to' => $to,
                 ];
 
-                if ($pieceFrom['type'] === 'pawn' && in_array($to{1}, [1, 8])) { // promotion
+                if ($pieceFrom['type'] === 'pawn' && in_array(substr($to, 1, 1), [1, 8])) { // promotion
                     $validPromotions = ['q', 'r', 'n', 'b'];
                     foreach ($validPromotions as $validPromotion) {
                         $validMove['promoteTo'] = $validPromotion;

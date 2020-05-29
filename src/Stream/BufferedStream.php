@@ -52,7 +52,7 @@ class BufferedStream implements StreamInterface
     {
         for ($i = 0; $i < strlen($buffer); $i++) {
             foreach ($this->readers as $reader) {
-                $boardMessage = ord($buffer{$i});
+                $boardMessage = ord(substr($buffer, $i, 1));
                 $this->setBoardMessage($boardMessage);
                 $reader->update($this);
             }

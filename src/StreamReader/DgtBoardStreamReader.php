@@ -8,6 +8,7 @@ use StasPiv\DgtDrvPhp\BufferAnalyzer;
 use StasPiv\DgtDrvPhp\Stream;
 use StasPiv\DgtDrvPhp\StreamInterface;
 use StasPiv\DgtDrvPhp\StreamReader;
+use Throwable;
 
 class DgtBoardStreamReader implements StreamReader
 {
@@ -73,16 +74,22 @@ class DgtBoardStreamReader implements StreamReader
         if ($this->bufferCounter == $this->partSize) {
             $this->buffer = array_splice($this->buffer, self::PART_SIZE_TYPE);
 
-            foreach ($this->analyzers as $analyzer) {
-                switch ($this->getMessageType()) {
-                    case self::MESSAGE_MOVE:
-                        $analyzer->analyzeMove($this->buffer);
-                        break;
-                    case self::MESSAGE_BOARD:
-                        $this->bufferBoard = $this->buffer;
-                        $analyzer->analyzeBoard($this->buffer, $stream instanceof Stream);
-                        break;
+            try {
+                foreach ($this->analyzers as $analyzer) {
+                    switch ($this->getMessageType()) {
+                        case self::MESSAGE_MOVE:
+                            $analyzer->analyzeMove($this->buffer);
+                            break;
+                        case self::MESSAGE_BOARD:
+                            $this->bufferBoard = $this->buffer;
+                            $analyzer->analyzeBoard($this->buffer, $stream instanceof Stream);
+                            break;
+                    }
                 }
+            } catch (Throwable $exception) {
+                $this->flushBuffer();
+                $stream->write(DgtBoardStreamReader::SEND_BRD);
+                return;
             }
         }
 
