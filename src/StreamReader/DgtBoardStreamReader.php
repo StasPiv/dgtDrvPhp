@@ -6,7 +6,9 @@ namespace StasPiv\DgtDrvPhp\StreamReader;
 use SplSubject;
 use StasPiv\DgtDrvPhp\BufferAnalyzer;
 use StasPiv\DgtDrvPhp\Stream;
+use StasPiv\DgtDrvPhp\StreamInterface;
 use StasPiv\DgtDrvPhp\StreamReader;
+use Throwable;
 
 class DgtBoardStreamReader implements StreamReader
 {
@@ -47,7 +49,7 @@ class DgtBoardStreamReader implements StreamReader
 
     public function update(SplSubject $stream)
     {
-        if (!$stream instanceof Stream) {
+        if (!$stream instanceof StreamInterface) {
             return;
         }
 
@@ -72,16 +74,34 @@ class DgtBoardStreamReader implements StreamReader
         if ($this->bufferCounter == $this->partSize) {
             $this->buffer = array_splice($this->buffer, self::PART_SIZE_TYPE);
 
-            foreach ($this->analyzers as $analyzer) {
-                switch ($this->getMessageType()) {
-                    case self::MESSAGE_MOVE:
-                        $analyzer->analyzeMove($this->buffer);
-                        break;
-                    case self::MESSAGE_BOARD:
-                        $this->bufferBoard = $this->buffer;
-                        $analyzer->analyzeBoard($this->buffer);
-                        break;
+            try {
+                foreach ($this->analyzers as $analyzer) {
+                    switch ($this->getMessageType()) {
+                        case self::MESSAGE_MOVE:
+                            $analyzer->analyzeMove($this->buffer);
+                            break;
+                        case self::MESSAGE_BOARD:
+                            $this->bufferBoard = $this->buffer;
+                            $analyzer->analyzeBoard($this->buffer, $stream instanceof Stream);
+                            break;
+                    }
                 }
+            } catch (Throwable $exception) {
+                $this->flushBuffer();
+                $stream->write(DgtBoardStreamReader::SEND_BRD);
+                return;
+            }
+        }
+
+        if ($stream instanceof Stream) {
+            $invalidUpdateBuffers = [];
+
+            for ($i=0;$i<=12;$i++) {
+                $invalidUpdateBuffers[] = [142,0,5,$i];
+            }
+            if (in_array($this->buffer, $invalidUpdateBuffers)) {
+                // workaround for b6 and d6. for some reason these fields aren't recognized by "cu"
+                $stream->write(DgtBoardStreamReader::SEND_BRD);
             }
         }
     }

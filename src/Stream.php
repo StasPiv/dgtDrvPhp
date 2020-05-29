@@ -3,6 +3,9 @@
 namespace StasPiv\DgtDrvPhp;
 
 use SplObserver;
+use StasPiv\DgtDrvPhp\Exception\UnknownConnectionType;
+use StasPiv\DgtDrvPhp\Stream\ConnectionType;
+use StasPiv\DgtDrvPhp\Stream\SplSubjectTrait;
 use StasPiv\DgtDrvPhp\StreamReader\DgtBoardStreamReader;
 
 /**
@@ -11,29 +14,42 @@ use StasPiv\DgtDrvPhp\StreamReader\DgtBoardStreamReader;
  * Class Stream
  * @package StasPiv\DgtDrvPhp
  */
-class Stream implements \SplSubject
+class Stream implements StreamInterface
 {
+    use SplSubjectTrait;
+
     /** @var bool|resource */
     private $handle;
-
-    /** @var StreamReader[] */
-    private $readers;
-
-    /** @var int  */
-    private $boardMessage;
 
     /** @var string */
     private $port;
 
     /** @var array */
     private $pipes;
+    
+    /** @var int */
+    private $connectionType;
 
     /**
      * DgtBoardStream constructor.
+     *
+     * @param int $connectionType
      */
-    public function __construct()
+    public function __construct(int $connectionType = ConnectionType::BLUETOOTH)
     {
-        exec('ls /dev/ | grep ttyACM', $output);
+        $this->connectionType = $connectionType;
+
+        switch ($this->connectionType) {
+            case ConnectionType::BLUETOOTH:
+                exec('ls /dev/ | grep rfcomm', $output);
+                $output = [$output[array_key_last($output)]];
+                break;
+            case ConnectionType::USB:
+                exec('ls /dev/ | grep ttyACM', $output);
+                break;
+            default:
+                throw new UnknownConnectionType(sprintf('Unkown connection type: %s', $connectionType));
+        }
 
         if (!isset($output) || count($output) !== 1) {
             throw new \RuntimeException('Unable to find DGT board or too many devices connected');
@@ -41,11 +57,11 @@ class Stream implements \SplSubject
 
         $this->port = '/dev/' . $output[0];
 
-        $this->handle = proc_open('minicom -wH -D ' . $this->port, [
-            ["pipe", "r"],  // stdin is a pipe that the child will read from
-            ["pipe", "w"],  // stdout is a pipe that the child will write to
-            ["file", 'tty-error.txt' , "a"]   // stderr is a file to write to
-        ], $this->pipes);
+        $this->handle = proc_open('cu -l ' . $this->port . ' -s baud-rate-speed', array(
+            0 => array("pipe", "r"),  // stdin is a pipe that the child will read from
+            1 => array("pipe", "w"),  // stdout is a pipe that the child will write to
+            2 => array("file", 'tty-error.txt' , "w")   // stderr is a file to write to
+        ), $this->pipes);
 
         if (!$this->handle) {
             throw new \RuntimeException('Unable to open port ' . $this->port);
@@ -54,45 +70,14 @@ class Stream implements \SplSubject
 
     public function start(callable $callable = null)
     {
-        $ordChar = -1;
-        $buffer = '';
-        
+        $errorContent = file_get_contents('tty-error.txt');
+        if (!empty($errorContent)) {
+            throw new \RuntimeException($errorContent);
+        }
+
         while (true) {
-            $char = fread($this->pipes[1], 1);
-
-            $currentChar = ord($char);
-            if ($currentChar === 56 && ($ordChar === 10 || $ordChar === 104) || $currentChar === 32 && $ordChar === 32) {
-                $skip = false;
-                $buffer = '';
-            }
-
-            $ordChar = $currentChar;
-
-            if ($ordChar === 27) {
-                $skip = true;
-            }
-
-            if ($skip) {
-                $ignoredBuffer[] = $ordChar;
-                if ($ordChar === 72) {
-                    $skip = false;
-                    $ignoredBuffer = [];
-                }
-                continue;
-            }
-
-            if ($char !== ' ' && $ordChar !== 13) {
-                $buffer .= $char;
-            }
-
-            $boardMessage = hexdec($buffer);
-            
-            if (($boardMessage !== 0 || $buffer === '00') && strlen($buffer) === 2) {
-                $this->setBoardMessage((int)$boardMessage);
-                $this->notify();
-                $buffer = '';
-            }
-
+            $this->setBoardMessage($this->read());
+            $this->notify();
             if (isset($callable)) {
                 call_user_func($callable);
             }
@@ -104,41 +89,9 @@ class Stream implements \SplSubject
         fwrite($this->pipes[0], chr($number), 1);
     }
 
-    public function attach(SplObserver $observer)
+    private function read(): int
     {
-        $this->readers[] = $observer;
-    }
-
-    public function detach(SplObserver $observer)
-    {
-        if (($key = array_search($observer, $this->readers)) !== false) {
-            unset($this->readers[$key]);
-        }
-    }
-
-    public function notify()
-    {
-        foreach ($this->readers as $reader) {
-            $reader->update($this);
-        }
-    }
-
-    /**
-     * @return int
-     */
-    public function getBoardMessage(): int
-    {
-        return $this->boardMessage;
-    }
-
-    /**
-     * @param string $boardMessage
-     * @return Stream
-     */
-    public function setBoardMessage(int $boardMessage): Stream
-    {
-        $this->boardMessage = $boardMessage;
-        return $this;
+        return ord(fread($this->pipes[1], 1));
     }
 
     public function __destruct()

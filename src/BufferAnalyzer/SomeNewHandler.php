@@ -16,13 +16,13 @@ class SomeNewHandler implements HandlerInterface
         var_dump(func_get_args());
     }
 
-    public function handleBoardUpdated(string $newFen, &$updatedFen = null): bool
+    public function handleBoardUpdated(string $newFen, string $whiteBelowFen, &$updatedFen = null, $theSameFen = false): bool
     {
         var_dump(func_get_args());
         return false;
     }
 
-    public function handleLegalMoveCompleted(array $move, string $moveNotation, string $fenBefore, string $fenAfter): bool
+    public function handleLegalMoveCompleted(array $move, string $moveNotation, string $fenBefore, string $fenAfter, &$resetAfterLegalMove = false): bool
     {
         var_dump(func_get_args());
         return true;

@@ -36,9 +36,6 @@ class ChessAnalyzer implements BufferAnalyzer
     const HANDLE_MOVE_COMPLETED = 'handle-move-completed';
     const RESET_VALID_MOVES = 'reset-valid-moves';
 
-    /** @var Stream */
-    private $stream;
-
     private $boardRotated = true;
 
     /**
@@ -58,17 +55,16 @@ class ChessAnalyzer implements BufferAnalyzer
     private $output;
     
     /** @var array */
-    private $board;
+    private $board = [];
 
     /**
      * ChessAnalyzer constructor.
      *
-     * @param Stream        $stream
-     * @param FenParser0x88 $fenParser
+     * @param FenParser0x88   $fenParser
+     * @param OutputInterface $output
      */
-    public function __construct(Stream $stream, FenParser0x88 $fenParser, OutputInterface $output)
+    public function __construct(FenParser0x88 $fenParser, OutputInterface $output)
     {
-        $this->stream = $stream;
         $this->fenParser = $fenParser;
         $this->output = $output;
     }
@@ -120,7 +116,6 @@ class ChessAnalyzer implements BufferAnalyzer
      */
     public function analyzeMove(array $buffer): void
     {
-        $this->log(sprintf('method %s, buffer: %s', __METHOD__, json_encode($buffer)), Output::VERBOSITY_DEBUG);
         $pieceNotation = $this->getPieceNotation($buffer[1]);
         $square = $this->getSquare($buffer[0]);
 
@@ -142,10 +137,16 @@ class ChessAnalyzer implements BufferAnalyzer
     /**
      * @param array $buffer
      *
+     * @param bool  $analyzeExceptions
+     *
      * @throws Exception
      */
-    public function analyzeBoard(array $buffer): void
+    public function analyzeBoard(array $buffer, bool $analyzeExceptions = false): void
     {
+        if ($analyzeExceptions) {
+            $this->analyzeExceptions($buffer);
+        }
+
         $this->performAnalyzeBoard($this->board = $buffer);
     }
 
@@ -165,7 +166,7 @@ class ChessAnalyzer implements BufferAnalyzer
      */
     public function getResultForAnalyzeBoard(bool $moveFound, bool $boardUpdated): array
     {
-        $this->log(sprintf('arguments for analyze board: %s', print_r(func_get_args(), true)), Output::VERBOSITY_VERBOSE);
+        $this->log(sprintf('arguments for analyze board: %s', print_r(func_get_args(), true)), Output::VERBOSITY_DEBUG);
 
         $actions = [];
 
@@ -197,6 +198,7 @@ class ChessAnalyzer implements BufferAnalyzer
                 $this->handleLegalMoveCompleted($move, $fenBefore);
                 break;
             case self::RESET_VALID_MOVES:
+                $this->log(sprintf('updatedFen in handleBoardUpdated: %s', $updatedFen), Output::VERBOSITY_DEBUG);
                 $this->resetValidMoves($updatedFen);
                 break;
         }
@@ -252,17 +254,18 @@ class ChessAnalyzer implements BufferAnalyzer
             $square = 63 - $square;
         }
 
-        return ('abcdefgh'){$square % 8} . (8 - (int)($square / 8));
+        return substr('abcdefgh', $square % 8, 1) . (8 - (int)($square / 8));
     }
 
     /**
      * @param array $buffer
+     * @param bool  $whiteAlwaysBelow
      *
      * @return string
      */
-    private function bufferToFen(array $buffer): string
+    private function bufferToFen(array $buffer, bool $whiteAlwaysBelow = false): string
     {
-        if ($this->boardRotated) {
+        if ($this->boardRotated && !$whiteAlwaysBelow) {
             $buffer = array_reverse($buffer);
         }
 
@@ -325,7 +328,7 @@ class ChessAnalyzer implements BufferAnalyzer
                     'to' => $to,
                 ];
 
-                if ($pieceFrom['type'] === 'pawn' && in_array($to{1}, [1, 8])) { // promotion
+                if ($pieceFrom['type'] === 'pawn' && in_array(substr($to, 1, 1), [1, 8])) { // promotion
                     $validPromotions = ['q', 'r', 'n', 'b'];
                     foreach ($validPromotions as $validPromotion) {
                         $validMove['promoteTo'] = $validPromotion;
@@ -343,16 +346,20 @@ class ChessAnalyzer implements BufferAnalyzer
 
     /**
      * @param string $fen
-     * @param        $updatedFen
+     * @param string $updatedFen
+     * @param string $whiteBelowFen
+     * @param bool   $theSameFen
      *
      * @return bool
      */
-    private function handleBoardUpdated(string $fen, &$updatedFen): bool
+    private function handleBoardUpdated(string $fen, &$updatedFen, string $whiteBelowFen, bool $theSameFen = false): bool
     {
-        $ret = true;
+        $ret = false;
 
         foreach ($this->handlers as $handler) {
-            $ret &= $handler->handleBoardUpdated($fen, $updatedFen);
+            if ($handler->handleBoardUpdated($fen, $whiteBelowFen, $updatedFen, $theSameFen)) {
+                $ret = true;
+            }
         }
 
         return $ret;
@@ -364,11 +371,19 @@ class ChessAnalyzer implements BufferAnalyzer
      */
     private function handleLegalMoveCompleted($move, string $fenBefore): void
     {
+        $this->log(__METHOD__, Output::VERBOSITY_VERBOSE);
         $fenAfter = $this->fenParser->getFen();
         foreach ($this->handlers as $handler) {
-            if (!$handler->handleLegalMoveCompleted($move, $this->fenParser->getNotation(), $fenBefore,
-                $fenAfter)) {
+            if (!$handler->handleLegalMoveCompleted($move, $this->fenParser->getNotation(), $fenBefore, $fenAfter, $resetAfterLegalMove)) {
+                $this->log(sprintf('Fen before legal move completed: %s', $fenAfter), Output::VERBOSITY_DEBUG);
                 $this->resetValidMoves($fenBefore);
+                continue;
+            }
+
+            if ($resetAfterLegalMove) {
+                $this->log(sprintf('Fen after legal move completed: %s', $fenAfter), Output::VERBOSITY_DEBUG);
+                $this->resetValidMoves($fenAfter);
+                break;
             }
         }
     }
@@ -381,22 +396,53 @@ class ChessAnalyzer implements BufferAnalyzer
         $this->log(sprintf('buffer: %s', json_encode($buffer)), Output::VERBOSITY_DEBUG);
         $this->log(sprintf('method %s', __METHOD__), Output::VERBOSITY_DEBUG);
         $fen = $this->bufferToFen($buffer);
+        $whiteBelowFen = $this->bufferToFen($buffer, true);
+        $this->log(sprintf('fen: %s', $fen), Output::VERBOSITY_DEBUG);
 
-        if ($fen === $this->lastFen) {
-            return;
-        }
+        $theSameFen = $fen === $this->lastFen;
 
         $this->lastFen = $fen;
 
         $actions = $this->getResultForAnalyzeBoard(
             isset($this->validMoveFens[$fen]),
-            $this->handleBoardUpdated($fen, $updatedFen)
+            $this->handleBoardUpdated($fen, $updatedFen, $whiteBelowFen, $theSameFen)
         );
-        $this->log(sprintf('result for analyze board: %s', print_r($actions, true)), Output::VERBOSITY_VERBOSE);
+        $this->log(sprintf('result for analyze board: %s', print_r($actions, true)), Output::VERBOSITY_DEBUG);
 
         foreach ($actions as $actionName) {
             $this->doActionForAnalyzeBoard($actionName, $buffer, $updatedFen);
         }
     }
 
+    /**
+     * @param array $buffer
+     */
+    private function analyzeExceptions(array $buffer): void
+    {
+        $diff = array_diff_assoc($buffer, $this->board);
+
+        $this->output->writeln(
+            sprintf(
+                'Buffer: %s, board: %s, diff: %s',
+                json_encode($buffer),
+                json_encode($this->board),
+                json_encode($diff)
+            ),
+            OutputInterface::VERBOSITY_DEBUG
+        );
+
+        foreach ([17, 19] as $exceptionField) {
+            if (isset($diff[$exceptionField])) {
+                $this->analyzeMove([$exceptionField, $diff[$exceptionField]]);
+            }
+        }
+
+        $reverseDiff = array_diff_assoc($this->board, $buffer);
+
+        foreach ([17, 19] as $exceptionField) {
+            if (isset($reverseDiff[$exceptionField])) {
+                $this->analyzeMove([$exceptionField, 0]);
+            }
+        }
+    }
 }

@@ -23,9 +23,11 @@
   "require": {
     "php": ">7.2",
     "chesscom/chess-game": "~1.1",
-    "DHTMLGoodies/chessParser": "dev-master",
+    "dhtmlgoodies/chessparser": "dev-master",
     "symfony/process": "^4.3",
-    "symfony/console": "^4.3"
+    "symfony/console": "^4.3",
+    "textalk/websocket": "^1.2",
+    "symfony/event-dispatcher": "^4.3"
   },
   "require-dev": {
 

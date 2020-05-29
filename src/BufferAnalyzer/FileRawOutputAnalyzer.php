@@ -26,7 +26,7 @@ class FileRawOutputAnalyzer implements BufferAnalyzer
         // TODO: Implement analyzeUpdate() method.
     }
 
-    public function analyzeBoard(array $buffer): void
+    public function analyzeBoard(array $buffer, bool $analyzeExceptions = false): void
     {
         $this->printBuffer($buffer);
     }
